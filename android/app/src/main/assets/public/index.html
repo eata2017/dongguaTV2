@@ -3170,19 +3170,24 @@
         </div>
 
         <div class="footer">
-            <!-- TV 模式开关 (非 TV 模式时显示，用于开启) -->
-            <div v-if="!isTVMode" class="tv-mode-toggle" @click="toggleTVMode" title="切换到TV模式（遥控器导航）">
-                <i class="fas fa-tv"></i>
-                <span>开启 TV 模式</span>
+            <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+                <!-- TV 模式开关 (非 TV 模式时显示，用于开启) -->
+                <div v-if="!isTVMode" class="tv-mode-toggle" @click="toggleTVMode" title="切换到TV模式（遥控器导航）">
+                    <i class="fas fa-tv"></i>
+                    <span>开启 TV 模式</span>
+                </div>
+                <!-- 设置按钮 -->
+                <div class="tv-mode-toggle" @click="showSettingsModal = true" title="偏好设置">
+                    <i class="fas fa-cog"></i>
+                    <span>偏好设置</span>
+                </div>
+                <!-- 退出登录按钮 -->
+                <div class="tv-mode-toggle" @click="confirmLogout" title="退出登录">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>退出登录</span>
+                </div>
             </div>
-            <!-- 设置按钮 -->
-            <div class="tv-mode-toggle" @click="showSettingsModal = true" style="margin-top: 10px;" title="偏好设置">
-                <i class="fas fa-cog"></i>
-                <span>偏好设置</span>
-            </div>
-            <!-- 隐藏的退出登录按钮：连续点击3次退出 -->
-            <div style="font-size:10px; margin-top:5px; opacity:0.5; cursor: default; user-select: none;"
-                @click="handleFooterClick" :title="footerClickCount >= 2 ? '再点击1次退出登录' : ''">
+            <div style="font-size:10px; margin-top:10px; opacity:0.5; user-select: none;">
                 Data provided by TMDb & Maccms APIs
             </div>
         </div>
@@ -3196,6 +3201,24 @@
                     <h2 style="color: #fff; margin-bottom: 25px; font-size: 1.5rem;">
                         <i class="fas fa-cog" style="margin-right: 10px; color: #e50914;"></i>偏好设置
                     </h2>
+
+                    <!-- V2Board 账户信息 -->
+                    <div v-if="v2boardAccount"
+                        style="padding: 15px; margin-bottom: 20px; background: rgba(229, 9, 20, 0.08); border-radius: 10px; border: 1px solid rgba(229, 9, 20, 0.15);">
+                        <div style="color: #fff; font-size: 14px; font-weight: 600; margin-bottom: 10px;">
+                            <i class="fas fa-user-circle" style="margin-right: 8px; color: #e50914;"></i>机场账户
+                        </div>
+                        <div style="display: grid; gap: 6px; font-size: 13px; color: #aaa;">
+                            <div><i class="fas fa-envelope" style="width: 18px; color: #666;"></i> {{
+                                v2boardAccount.email }}</div>
+                            <div><i class="fas fa-box" style="width: 18px; color: #666;"></i> {{ v2boardAccount.planName
+                                }}</div>
+                            <div><i class="fas fa-clock" style="width: 18px; color: #666;"></i> {{
+                                v2boardAccount.expiryText }}</div>
+                            <div><i class="fas fa-chart-pie" style="width: 18px; color: #666;"></i> {{
+                                v2boardAccount.trafficText }}</div>
+                        </div>
+                    </div>
 
                     <!-- 随机盲盒开关 -->
                     <div
@@ -3773,7 +3796,7 @@
                     syncStatus: 'idle',  // 同步状态: idle, syncing, success, error
                     syncToken: '',  // 用户同步 Token (密码哈希)
                     lastSyncTime: 0,  // 上次同步时间戳
-                    footerClickCount: 0,  // 用于隐蔽退出登录的点击计数
+                    // footerClickCount removed (now using visible logout button)
 
                     rowLeftButtons: {}, // 存储各分类榜单左侧按钮显示状态 { movieRow: false, ... }
 
@@ -4059,6 +4082,37 @@
                 // 兼容旧代码的 availableSources（包含快速和慢速）
                 availableSources() {
                     return [...this.fastSources, ...this.slowSources];
+                },
+                // V2Board 账户信息（用于设置弹窗显示）
+                v2boardAccount() {
+                    const authType = localStorage.getItem('emax_auth_type');
+                    if (authType !== 'v2board') return null;
+
+                    const email = localStorage.getItem('emax_v2board_email') || '';
+                    const planJson = localStorage.getItem('emax_v2board_plan');
+                    if (!planJson) return { email, planName: '未知', expiryText: '未知', trafficText: '未知' };
+
+                    try {
+                        const plan = JSON.parse(planJson);
+                        let expiryText = '永久有效';
+                        if (plan.expiresAt) {
+                            const d = new Date(plan.expiresAt);
+                            const remain = Math.ceil((plan.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                            expiryText = d.toLocaleDateString() + (remain > 0 ? ` (剩余${remain}天)` : ' (已过期)');
+                        }
+
+                        let trafficText = '无限流量';
+                        if (plan.traffic && !plan.traffic.unlimited && plan.traffic.total > 0) {
+                            const usedGB = (plan.traffic.used / (1024 ** 3)).toFixed(2);
+                            const totalGB = (plan.traffic.total / (1024 ** 3)).toFixed(2);
+                            const pct = ((plan.traffic.used / plan.traffic.total) * 100).toFixed(1);
+                            trafficText = `${usedGB} / ${totalGB} GB (${pct}%)`;
+                        }
+
+                        return { email, planName: plan.name || '未知套餐', expiryText, trafficText };
+                    } catch (e) {
+                        return { email, planName: '未知', expiryText: '未知', trafficText: '未知' };
+                    }
                 }
             },
             methods: {
@@ -4611,22 +4665,7 @@
                     }
                 },
 
-                // 页脚隐蔽退出（连续点击3次触发）
-                handleFooterClick() {
-                    this.footerClickCount++;
-
-                    // 2秒内没有继续点击则重置计数
-                    clearTimeout(this._footerClickTimer);
-                    this._footerClickTimer = setTimeout(() => {
-                        this.footerClickCount = 0;
-                    }, 2000);
-
-                    // 点击3次触发退出确认
-                    if (this.footerClickCount >= 3) {
-                        this.footerClickCount = 0;
-                        this.confirmLogout();
-                    }
-                },
+                // handleFooterClick removed (now using visible logout button)
 
                 // 格式化观看时间
                 formatWatchTime(isoString) {
