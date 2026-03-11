@@ -1,6 +1,6 @@
 // Service Worker with Image Caching for dongguaTV
-// v23: Added ad-filter.js to pre-cache list
-const CACHE_VERSION = 'v23';
+// v22: Fixed CORS proxy handling and null response errors
+const CACHE_VERSION = 'v22';
 const STATIC_CACHE = 'donggua-static-' + CACHE_VERSION;
 const IMAGE_CACHE = 'donggua-images-' + CACHE_VERSION;
 
@@ -16,7 +16,6 @@ const STATIC_URLS = [
     './libs/js/vue.global.prod.min.js',
     './libs/js/bootstrap.bundle.min.js',
     './libs/js/hls.min.js',
-    './libs/js/ad-filter.js',
     './libs/js/DPlayer.min.js'
 ];
 
